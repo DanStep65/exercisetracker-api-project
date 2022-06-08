@@ -128,29 +128,57 @@ function logging(obj){
   return {description: obj.description, duration: obj.duration, date: obj.date.toDateString()};
 }
 app.get('/api/users/:_id/logs/', (req, res) =>{
-  Exercise.find({user_id: req.params._id}).exec((err, data) =>{
-    if(err){
-      return res.send(err.message);
+  if(Boolean(req.query.from || req.query.to || req.query.limit)){
+    if(!Boolean(req.query.limit)){
+      req.query.limit = Number.MAX_VALUE;
     }
-    return res.json(
-      { username: data[0]['username'],
-        count: data.length,
-        _id: data[0]['user_id'],
-        log: data.map(logging)
-      });
-  });
-  //
-  /*
-{
-  username: "fcc_test",
-  count: 1,
-  _id: "5fb5853f734231456ccb3b05",
-  log: [{
-    description: "test",
-    duration: 60,
-    date: "Mon Jan 01 1990",
-  }]
-}*/
+    if(!Boolean(req.query.from)){
+      req.query.from = '1970-01-01';
+    }
+    if(!Boolean(req.query.to)){
+      req.query.to = '2050-12-31';
+    }
+    Exercise.find(
+      {
+        user_id: req.params._id,
+        date: {$gte: req.query.from, $lte: req.query.to}
+      }
+    ).lean().limit(req.query.limit).exec((err,data) => {
+      if(err){
+        return res.send(err.message);
+      }
+      else if (data.length == 0){
+        return res.send("Data empty");
+      }
+      else{
+        return res.json(
+          { username: data[0]['username'],
+            count: data.length,
+            _id: data[0]['user_id'],
+            log: data.map(logging)
+          });              
+      }
+    });
+  } 
+  else{
+      Exercise.find({user_id: req.params._id}).lean().exec((err, data) =>{
+        if(err){
+          return res.send(err.message);
+        }
+        else if (data.length == 0){
+          return res.send("Data empty");
+        }
+        else{
+        return res.json(
+          { username: data[0]['username'],
+            count: data.length,
+            _id: data[0]['user_id'],
+            log: data.map(logging)
+          }); 
+          
+        }
+      });    
+  }
 });
 
 app.get('/api/delete/', (req, res) => {
